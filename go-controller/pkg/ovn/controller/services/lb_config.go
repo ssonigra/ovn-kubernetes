@@ -195,7 +195,15 @@ func buildServiceLBConfigs(service *corev1.Service, endpointSlices []*discovery.
 		// NodePort services get a per-node load balancer, but with the node's physical IP as the vip
 		// Thus, the vip "node" will be expanded later.
 		// This is NEVER influenced by InternalTrafficPolicy
-		if svcPort.NodePort != 0 {
+		//
+		// Only create NodePort load balancers if:
+		// 1. NodePort is explicitly set (svcPort.NodePort != 0), AND
+		// 2. For LoadBalancer services, allocateLoadBalancerNodePorts is not explicitly disabled
+		// 3. For NodePort services, always create NodePort LBs
+		shouldCreateNodePortLB := svcPort.NodePort != 0 &&
+			(service.Spec.Type != corev1.ServiceTypeLoadBalancer || util.LoadBalancerServiceHasNodePortAllocation(service))
+
+		if shouldCreateNodePortLB {
 			nodePortLBConfig := lbConfig{
 				protocol:             svcPort.Protocol,
 				inport:               svcPort.NodePort,
