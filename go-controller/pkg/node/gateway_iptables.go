@@ -501,8 +501,7 @@ func getGatewayIPTRules(service *corev1.Service, localEndpoints util.PortToLBEnd
 	svcTypeIsITPLocal := util.ServiceInternalTrafficPolicyLocal(service)
 	for _, svcPort := range service.Spec.Ports {
 		// Only handle NodePort if the service type requires it and allocates NodePorts
-		shouldHandleNodePort := util.ServiceTypeHasNodePort(service) && svcPort.NodePort > 0
-		if shouldHandleNodePort {
+		if util.ServiceHasNodePortAllocated(service, svcPort) {
 			err := util.ValidatePort(svcPort.Protocol, svcPort.NodePort)
 			if err != nil {
 				klog.Errorf("Skipping service: %s, invalid service NodePort: %v", svcPort.Name, err)
@@ -540,8 +539,7 @@ func getGatewayIPTRules(service *corev1.Service, localEndpoints util.PortToLBEnd
 					// case1 (see function description for details)
 					// DNAT traffic to masqueradeIP:nodePort instead of clusterIP:Port. We are leveraging the existing rules for NODEPORT
 					// service so no need to add a rule to skip SNAT since the corresponding nodePort svc would have one.
-					hasNodePortAllocated := util.ServiceTypeHasNodePort(service) && svcPort.NodePort > 0
-					if !hasNodePortAllocated {
+					if !util.ServiceHasNodePortAllocated(service, svcPort) {
 						rules = append(rules, generateIPTRulesForLoadBalancersWithoutNodePorts(svcPort, externalIP, localEndpoints)...)
 					} else {
 						rules = append(rules, getExternalIPTRules(svcPort, externalIP, "", svcHasLocalHostNetEndPnt, svcTypeIsETPLocal)...)
