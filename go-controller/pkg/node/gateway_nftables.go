@@ -186,7 +186,8 @@ func getGatewayNFTRules(service *corev1.Service, localEndpoints util.PortToLBEnd
 			// For `externalTrafficPolicy: Local` services with pod-network
 			// endpoints, we need to add rules to prevent them from being SNATted
 			// when entering the management port, to preserve the client IP.
-			if util.ServiceTypeHasNodePort(service) {
+			hasNodePortAllocated := util.ServiceTypeHasNodePort(service) && svcPort.NodePort > 0
+			if hasNodePortAllocated {
 				rules = append(rules, getNoSNATNodePortRules(svcPort)...)
 			} else if len(util.GetExternalAndLBIPs(service)) > 0 {
 				rules = append(rules, getNoSNATLoadBalancerIPRules(svcPort, localEndpoints)...)
@@ -211,7 +212,8 @@ func getGatewayNFTSets() []string {
 func getUDNNFTRules(service *corev1.Service, netConfig *bridgeconfig.BridgeUDNConfiguration) []*knftables.Element {
 	rules := make([]*knftables.Element, 0)
 	for _, svcPort := range service.Spec.Ports {
-		if util.ServiceTypeHasNodePort(service) {
+		hasNodePortAllocated := util.ServiceTypeHasNodePort(service) && svcPort.NodePort > 0
+		if hasNodePortAllocated {
 			rules = append(rules, getUDNNodePortMarkNFTRule(svcPort, netConfig))
 		}
 		rules = append(rules, getUDNExternalIPsMarkNFTRules(svcPort, util.GetExternalAndLBIPs(service), netConfig)...)
